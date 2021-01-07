@@ -6,6 +6,7 @@
 #include <fstream>
 
 #include "lexer.h"
+#include "parser.h"
 
 using namespace std;
 
@@ -71,13 +72,33 @@ int main(int argc, char* argv[]) {
         else
             fprintf(stderr, "Failed to tokenize file: %s\n", filename);
 
-        string lexfile = filename;
-        lexfile += ".lex";
-        ofstream olex(lexfile);
+        string lexfn = filename;
+        lexfn += ".lex";
+        ofstream olex(lexfn);
         if (olex.is_open()) {
             olex << lex.to_string(filename);
         }
         olex.close();
+
+        Cmp::Parser parser(&lex, filename);
+        if (parser.isValid()) {
+            cout << "Succesfully parsed to a ast" << endl;
+            string astfn = filename;
+            astfn += ".ast";
+            ofstream oast(astfn);
+            if (oast.is_open())
+                oast<< parser.to_string();
+            oast.close();
+
+            string dotfn = filename; dotfn += ".dot";
+            ofstream odot(dotfn);
+            if (odot.is_open())
+                odot << parser.to_dot(parser.root());
+            odot.close();
+
+        } else
+            cerr << "Failed to parse file:" << filename << endl;
+
 
     } else {
         fprintf(stderr, "Could not open filen: %s\n", filename);

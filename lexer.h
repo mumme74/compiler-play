@@ -48,12 +48,14 @@ public:
 
     std::string to_string(const char* filename);
 
+    uint lineForToken(LexToken &tok);
+
     // filename, tokens
     typedef std::vector<LexToken> T_Tokens;
     std::map<const char*, T_Tokens> files;
 
+    void syntaxError(const char* errPos);
 private:
-    void syntaxError();
     LexToken matchFunc(const Matches *matches);
 
     void space();
@@ -68,10 +70,10 @@ private:
     inline const char *curPos() const { return _curPos; };
     inline const char *nextPos() { return ++_curPos;};
     inline const char *peek(int inc = 1) const { return _curPos + inc; }
-    uint lineAtPos(const char *pos) const;
     bool tryAccept(LexToken &tok);
     bool accept();
     void rewind();
+    uint lineAtPos(const char *pos) const;
     T_Tokens tokens;
 
 };

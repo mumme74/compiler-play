@@ -15,11 +15,13 @@ source_group(EXAMPLES
 
 set(COMPILER_HDRS
     lexer.h
+    parser.h
 )
 
 set(COMPILER_SRCS
     lexer.cpp
     main.cpp
+    parser.cpp
 )
 
 add_executable(c-compiler-tutorial ${COMPILER_SRCS})

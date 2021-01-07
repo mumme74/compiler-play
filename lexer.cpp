@@ -209,7 +209,7 @@ bool Lexer::tokenize(const char *srcStr[], const char *filename)
 
         if (lastIterPos >= _acceptedPos) {
             res = false;
-            syntaxError(); // print err msg
+            syntaxError(curPos()); // print err msg
             if (!_breakOnSyntaxError)
                 for(char c = *nextPos(); c != 0 && c != '\n'; c = *nextPos())
                     ;
@@ -257,10 +257,15 @@ string Lexer::to_string(const char *filename)
     return ret.str();
 }
 
-void Lexer::syntaxError()
+uint Lexer::lineForToken(LexToken &tok)
 {
-    const char *start = curPos(),
-               *linePos = curPos();
+    return lineAtPos(tok.pos);
+}
+
+void Lexer::syntaxError(const char* errPos)
+{
+    const char *start = errPos,
+               *linePos = _start;
     // find out linenr and pos in line
     uint line = 0, pos = 0;
     const char *cp = _start;
