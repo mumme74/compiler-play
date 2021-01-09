@@ -2,6 +2,7 @@
 #define LEXER_H
 #include <inttypes.h>
 #include <vector>
+#include <string>
 #include <map>
 
 namespace Cmp {
@@ -24,7 +25,8 @@ public:
     LexToken(const LexToken &other);
     LexToken &operator=(const LexToken &other);
     bool isValid() const { return type != Undefined; }
-    const char *to_cstr() const;
+    const char *type_to_cstr() const;
+    std::string srcStr() const { return std::string(pos, len); }
     const Tokens type;
     const char* pos;
     const size_t len;

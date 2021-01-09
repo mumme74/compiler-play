@@ -15,16 +15,16 @@ using namespace std;
 // -----------------------------------------------------------
 
 
-AstNode::AstNode(AstNode *parent, LexToken *tok, AstNode::Type type)
+ParseNode::ParseNode(ParseNode *parent, LexToken *tok, ParseNode::Kind type)
     : _parent(parent)
     , _leftOperand(nullptr)
     , _rightOperand(nullptr)
     , _operator(nullptr)
     , _tok(tok)
-    , _type(type)
+    , _kind(type)
 { }
 
-AstNode::~AstNode()
+ParseNode::~ParseNode()
 {
     if (_parent)
         _parent->removeChild(this);
@@ -51,7 +51,7 @@ AstNode::~AstNode()
     delete oldOper;
 }
 
-void AstNode::setLeftOper(AstNode *left)
+void ParseNode::setLeftOper(ParseNode *left)
 {
     assert(left != _parent);
     assert(left != this);
@@ -60,7 +60,7 @@ void AstNode::setLeftOper(AstNode *left)
     _leftOperand = left;
 }
 
-void AstNode::setRightOper(AstNode *right)
+void ParseNode::setRightOper(ParseNode *right)
 {
     assert(right != _parent || !right);
     assert(right != this);
@@ -69,7 +69,7 @@ void AstNode::setRightOper(AstNode *right)
     _rightOperand = right;
 }
 
-void AstNode::setOperat(AstNode *oper)
+void ParseNode::setOperat(ParseNode *oper)
 {
     assert(oper != _parent || !oper);
     assert(oper != this);
@@ -78,7 +78,7 @@ void AstNode::setOperat(AstNode *oper)
     _operator = oper;
 }
 
-void AstNode::setParent(AstNode *parent)
+void ParseNode::setParent(ParseNode *parent)
 {
     assert(parent != _leftOperand || !parent);
     assert(parent != _rightOperand || !parent);
@@ -89,7 +89,7 @@ void AstNode::setParent(AstNode *parent)
     _parent = parent;
 }
 
-void AstNode::removeChild(AstNode *child)
+void ParseNode::removeChild(ParseNode *child)
 {
     if (child == _leftOperand)
         _leftOperand = nullptr;
@@ -99,9 +99,9 @@ void AstNode::removeChild(AstNode *child)
         _operator = nullptr;
 }
 
-const char *AstNode::to_cstr() const
+const char *ParseNode::to_cstr() const
 {
-    switch (_type) {
+    switch (_kind) {
     case Undefined: return "Undefined";
     case Program:   return "Program";
     case Function:  return "Function";
@@ -110,6 +110,7 @@ const char *AstNode::to_cstr() const
     case Expression:return "Expression";
     case Constant:  return "Constant";
     case DataType:  return "DataType";
+    case EndMarker: return "EndMarker";
     }
     assert(0 && "No name Type in Paser, should not happen");
     return nullptr;
@@ -178,8 +179,8 @@ string Parser::to_string() const
     }
 
     size_t longestName = 0;
-    for (int i = 0; i < AstNode::EndMarker; ++i) {
-        AstNode n(nullptr, nullptr, static_cast<AstNode::Type>(i));
+    for (int i = 0; i < ParseNode::EndMarker; ++i) {
+        ParseNode n(nullptr, nullptr, static_cast<ParseNode::Kind>(i));
         auto len = strlen(n.to_cstr());
         if (len > longestName)
             longestName = len;
@@ -191,7 +192,7 @@ string Parser::to_string() const
     return res.str();
 }
 
-string Parser::to_dot(AstNode *root) const
+string Parser::to_dot(ParseNode *root) const
 {
     stringstream dot;
     dot << "digraph g{" << endl;
@@ -200,7 +201,7 @@ string Parser::to_dot(AstNode *root) const
     return dot.str();
 }
 
-void Parser::recursePrint(AstNode *node, stringstream &res,
+void Parser::recursePrint(ParseNode *node, stringstream &res,
                           size_t leftDepth, size_t longestname) const
 {
 
@@ -223,7 +224,7 @@ void Parser::recursePrint(AstNode *node, stringstream &res,
     }
 }
 
-void Parser::recurseDot(stringstream &dot, AstNode *n, string parentName) const
+void Parser::recurseDot(stringstream &dot, ParseNode *n, string parentName) const
 {
     if (!n) return;
     //        Program[shape = box];
@@ -242,7 +243,7 @@ void Parser::recurseDot(stringstream &dot, AstNode *n, string parentName) const
     string name = n->to_cstr();
     string label = name ;
     if (n->lexToken()) {
-        label += string("\\n(") + n->lexToken()->to_cstr() + ")"
+        label += string("\\n(") + n->lexToken()->type_to_cstr() + ")"
                + "\\n[" + string(n->lexToken()->pos, n->lexToken()->len) + "]";
     }
     label = string("\"") + label + "\"";
@@ -280,7 +281,7 @@ void Parser::emptyDot(stringstream &dot, string parentName) const
 
 bool Parser::parseProgram()
 {
-    _root = new AstNode(nullptr, nullptr, AstNode::Program);
+    _root = new ParseNode(nullptr, nullptr, ParseNode::Program);
     bool res = parseFunction(_root);
     if (!res) {
         delete _root;
@@ -289,10 +290,10 @@ bool Parser::parseProgram()
     return res;
 }
 
-bool Parser::parseFunction(AstNode *parent)
+bool Parser::parseFunction(ParseNode *parent)
 {
     bool res = true;
-    AstNode *node = nullptr;
+    ParseNode *node = nullptr;
 
     // <int> <ident> '(' ')' '{' <statement> '}'
     do {
@@ -304,10 +305,10 @@ bool Parser::parseFunction(AstNode *parent)
         res = failCheck(tok, LexToken::Identifier);
         if (!res) break;
 
-        node = new AstNode(parent, tok, AstNode::Function);
+        node = new ParseNode(parent, tok, ParseNode::Function);
         parent->setOperat(node);
 
-        auto retval = new AstNode(node, retTypetok, AstNode::DataType);
+        auto retval = new ParseNode(node, retTypetok, ParseNode::DataType);
         node->setLeftOper(retval);
 
         tok = nextTok();
@@ -337,18 +338,18 @@ bool Parser::parseFunction(AstNode *parent)
     return res;
 }
 
-bool Parser::parseStatement(AstNode *parent)
+bool Parser::parseStatement(ParseNode *parent)
 {
     bool res = true;
-    AstNode *node = nullptr;
+    ParseNode *node = nullptr;
 
     // <return> <exp> ';'
     do {
-        auto tok = nextTok();
+        auto tok = peek(0);
         res = failCheck(tok, LexToken::KwReturn);
         if (!res) break;
 
-        node = new AstNode(parent, tok, AstNode::Statement);
+        node = new ParseNode(parent, tok, ParseNode::Statement);
         parent->setOperat(node);
 
         res = parseExpression(node);
@@ -367,28 +368,22 @@ bool Parser::parseStatement(AstNode *parent)
     return res;
 }
 
-bool Parser::parseExpression(AstNode *parent)
+bool Parser::parseExpression(ParseNode *parent)
 {
     bool res = true;
-    AstNode *node = nullptr;
+    ParseNode *node = nullptr;
 
-    // < IntLitteral | OctalLitteral | BinaryLitteral | HexLitteral | FloatLitteral >
+    // <Return> -> <Expression>
     do {
-        auto tok = nextTok();
-        res = failCheck(tok, LexToken::IntLitteral, false);
-        if (!res)
-            res = failCheck(tok, LexToken::OctalLitteral, false);
-        if (!res)
-            res = failCheck(tok, LexToken::BinaryLitteral, false);
-        if (!res)
-            res = failCheck(tok, LexToken::HexLitteral, false);
-        if (!res)
-            res = failCheck(tok, LexToken::FloatLitteral);
-        if (!res)
-            break;
+        auto tok = peek(0);
+        if (!tok) { res = false; break; }
 
-        node = new AstNode(parent, tok, AstNode::Expression);
+        node = new ParseNode(parent, tok, ParseNode::Expression);
         parent->setOperat(node);
+
+        res = parseReturn(node);
+        if (!res) break;
+
 
     } while(0);
 
@@ -398,6 +393,65 @@ bool Parser::parseExpression(AstNode *parent)
     }
 
     return res;
+}
+
+bool Parser::parseReturn(ParseNode *parent)
+{
+    bool res = true;
+    ParseNode *node = nullptr;
+
+    // < Return >
+    do {
+        auto tok = nextTok();
+        res = failCheck(tok, LexToken::KwReturn);
+        if (!res) break;
+
+        node = new ParseNode(parent, tok, ParseNode::Return);
+        parent->setOperat(node);
+
+        res = parseConstant(node);
+
+    } while(0);
+
+    if (!res && node) {
+        parent->removeChild(node);
+        delete node;
+    }
+
+    return res;
+}
+
+bool Parser::parseConstant(ParseNode *parent)
+{
+     bool res = true;
+     ParseNode *node = nullptr;
+
+     // < IntLitteral | OctalLitteral | BinaryLitteral | HexLitteral | FloatLitteral >
+     do {
+         auto tok = nextTok();
+         res = failCheck(tok, LexToken::IntLitteral, false);
+         if (!res)
+             res = failCheck(tok, LexToken::OctalLitteral, false);
+         if (!res)
+             res = failCheck(tok, LexToken::BinaryLitteral, false);
+         if (!res)
+             res = failCheck(tok, LexToken::HexLitteral, false);
+         if (!res)
+             res = failCheck(tok, LexToken::FloatLitteral);
+         if (!res)
+             break;
+
+         node = new ParseNode(parent, tok, ParseNode::Constant);
+         parent->setOperat(node);
+
+     } while(0);
+
+     if (!res && node) {
+         parent->removeChild(node);
+         delete node;
+     }
+
+     return res;
 }
 
 LexToken *Parser::nextTok()
@@ -413,10 +467,13 @@ LexToken *Parser::nextTok()
 
 LexToken *Parser::peek(int inc)
 {
-    while (_tokIt + inc != _tokFile->end()) {
-        auto tok = &(*(_tokIt + inc));
+    auto it = _tokIt;
+    while (it + inc != _tokFile->end()) {
+        auto tok = &(*(it + inc));
         if (tok->type != LexToken::Comment && tok->type != LexToken::NewLine)
             return tok;
+        else
+            ++it;
     }
 
     return nullptr;
@@ -436,7 +493,7 @@ bool Parser::failCheck(LexToken *tok, LexToken::Tokens type, bool print)
                 tok = &_tokFile->back();
         }
         if (tok) {
-            cerr << "Failed parsing at " << tok->to_cstr()
+            cerr << "Failed parsing at " << tok->type_to_cstr()
                  << " at line " << _lexer->lineForToken(*tok)
                  << endl;
             _lexer->syntaxError(tok->pos);

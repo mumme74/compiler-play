@@ -122,7 +122,7 @@ LexToken &LexToken::operator=(const LexToken &other)
     return *this;
 }
 
-const char* LexToken::to_cstr() const
+const char* LexToken::type_to_cstr() const
 {
     switch(type) {
     case Undefined: return "Undefined";
@@ -237,7 +237,7 @@ string Lexer::to_string(const char *filename)
         uint prevLinePos = 0;
         for (auto tok : toks) {
             if (tok.type == LexToken::NewLine) {
-                ret << tok.to_cstr() << endl << lineAtPos(tok.pos) +1 << ":";
+                ret << tok.type_to_cstr() << endl << lineAtPos(tok.pos) +1 << ":";
                 linestart = tok.pos +1;
                 prevLinePos = 0;
                 continue;
@@ -248,7 +248,7 @@ string Lexer::to_string(const char *filename)
                 prevLinePos++;
             }
 
-            ret << tok.to_cstr() << " ";
+            ret << tok.type_to_cstr() << " ";
 
         }
     } else
