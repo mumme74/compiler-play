@@ -191,9 +191,9 @@ bool Lexer::tokenize(const char *srcStr[], const char *filename)
         if (tryAccept(tok))
             continue;
 
-        tok = keyWord();
-        if (tryAccept(tok))
-            continue;
+        //tok = keyWord();
+        //if (tryAccept(tok))
+        //    continue;
 
         tok = stringLitteral();
         if (tryAccept(tok))
@@ -203,7 +203,7 @@ bool Lexer::tokenize(const char *srcStr[], const char *filename)
         if (tryAccept(tok))
             continue;
 
-        tok = identifier();
+        tok = identifierOrKeword();
         if (tryAccept(tok))
             continue;
 
@@ -362,9 +362,13 @@ LexToken Lexer::comment()
     return LexToken();
 }
 
-LexToken Lexer::keyWord()
+LexToken Lexer::keyWord(const char*start, const char *end)
 {
-    return matchFunc(&kws);
+    uint cnt = 0;
+    auto m = kws.matchCnt(start, static_cast<size_t>(end - start), cnt);
+    if (cnt == 1 && m->len)
+        return LexToken(m->type, start, static_cast<size_t>(end - start));
+    return LexToken();
 }
 
 LexToken Lexer::delimiter()
@@ -372,16 +376,20 @@ LexToken Lexer::delimiter()
     return matchFunc(&delims);
 }
 
-LexToken Lexer::identifier()
+LexToken Lexer::identifierOrKeword()
 {
+    // this is rather trcicky, return0 is not a kwyword, must check entire string before deciding
     const char* start = curPos();
     if (!isalpha(*start))
         return LexToken();
 
     for (char c = *nextPos(); c != 0; c = *nextPos()) {
-        if (!isalpha(c) && !isdigit(c))
-            return LexToken(LexToken::Identifier, start,
-                            static_cast<uint>(curPos() - start));
+        if (!isalpha(c) && !isdigit(c)) {
+            auto kwTok = keyWord(start, curPos());
+            if (kwTok.isValid())
+                return kwTok;
+            return LexToken(LexToken::Identifier, start, static_cast<uint>(curPos() - start));
+        }
     }
     return LexToken();
 }

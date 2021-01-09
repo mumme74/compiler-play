@@ -63,9 +63,9 @@ private:
     void space();
     LexToken newLine();
     LexToken comment();
-    LexToken keyWord();
+    LexToken keyWord(const char *start, const char *end);
     LexToken delimiter();
-    LexToken identifier();
+    LexToken identifierOrKeword();
     LexToken intLitteral();
     LexToken stringLitteral();
 
